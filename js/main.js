@@ -124,7 +124,6 @@
   var skullSpawnRate = 5;
   var heartSpawnRate = 2;
 
-
   function heartRadius(heart) {
     return Math.max(heart._basescale.x * heart._energy * 0.4, 0.25);
   }
