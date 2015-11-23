@@ -6,68 +6,11 @@
 
 (function(t3) {
 
-  // keyboard state
-  // adapted from http://learningthreejs.com/data/THREEx/docs/THREEx.KeyboardState.html
-  // usage:
-  // var keyboard = new KeyboardState();
-  // This will return true if shift and A are pressed, false otherwise
-  // keyboard.pressed("shift+A")
-  // stop listening to the keyboard
-  // keyboard.destroy()
-  var KeyboardState = function() {
-    this.keyCodes = {};
-    this.modifiers = {};
-    var self = this;
-    this._onKeyDown = function(event){ self._onKeyChange(event, true); };
-    this._onKeyUp = function(event){ self._onKeyChange(event, false);};
-    document.addEventListener("keydown", this._onKeyDown, false);
-    document.addEventListener("keyup", this._onKeyUp, false);
-    this.MODIFIERS  = ['shift', 'ctrl', 'alt', 'meta'];
-    this.ALIAS  = {
-      'left'    : 37,
-      'up'      : 38,
-      'right'   : 39,
-      'down'    : 40,
-      'space'   : 32,
-      'pageup'  : 33,
-      'pagedown': 34,
-      'tab'     : 9
-    };
-  };
-  KeyboardState.prototype.destroy = function() {
-    document.removeEventListener("keydown", this._onKeyDown, false);
-    document.removeEventListener("keyup", this._onKeyUp, false);
-  };
-  KeyboardState.prototype._onKeyChange  = function(event, pressed) {
-    var keyCode = event.keyCode;
-    this.keyCodes[keyCode] = pressed;
-    this.modifiers['shift'] = event.shiftKey;
-    this.modifiers['ctrl'] = event.ctrlKey;
-    this.modifiers['alt'] = event.altKey;
-    this.modifiers['meta'] = event.metaKey;
-  };
-  KeyboardState.prototype.pressed = function(keyDesc) {
-    var keys  = keyDesc.split("+");
-    for (var i = 0; i < keys.length; i++) {
-      var key   = keys[i];
-      var pressed;
-      if (KeyboardState.MODIFIERS.indexOf(key) !== -1) {
-        pressed = this.modifiers[key];
-      } else if (Object.keys(KeyboardState.ALIAS).indexOf(key) != -1) {
-        pressed = this.keyCodes[KeyboardState.ALIAS[key]];
-      } else {
-        pressed = this.keyCodes[key.toUpperCase().charCodeAt(0)];
-      }
-      if (!pressed) {
-        return false;
-      }
-    };
-    return true;
-  };
 
   var scene = new t3.Scene();
   var camera = new t3.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
   var renderer = new t3.WebGLRenderer();
+  var loader = new t3.TextureLoader();
 
   renderer.setSize( window.innerWidth, window.innerHeight );
   renderer.setPixelRatio( window.devicePixelRatio );
@@ -79,68 +22,203 @@
     camera.updateProjectionMatrix();
   });
 
-  var skullTexture = t3.ImageUtils.loadTexture( "img/skull.png" );
-  skullTexture.minFilter = t3.NearestFilter;
-  skullTexture.magFilter = t3.NearestFilter;
-  var skullMaterial = new t3.SpriteMaterial( { map: skullTexture, color: 0xffffff, fog: true } );
-  var skull = new t3.Sprite( skullMaterial );
-  scene.add( skull );
+  renderer.setClearColor(0);
+  scene.fog = new t3.Fog( 0, 15, 30 );
 
-  var heartTexture = t3.ImageUtils.loadTexture( "img/heart.png" );
-  heartTexture.minFilter = t3.NearestFilter;
-  heartTexture.magFilter = t3.NearestFilter;
-  var heartMaterial = new t3.SpriteMaterial( { map: heartTexture, color: 0xffffff, fog: true } );
-  var heart = new t3.Sprite( heartMaterial );
-  scene.add( heart );
-
-  renderer.setClearColor(0x222428);
-  scene.fog = new t3.Fog( 0x222428, 15, 30 );
-
-  var player = {
-    sprite: {}
-  };
+  var skullMaterial = null;
+  var heartMaterial = null;
+  var bigheart = null;
   var hearts = [];
   var skulls = [];
+  var removals = [];
+
+  // x and y are client position in window
+  function pos2Dto3D(x, y) {
+    var vector = new THREE.Vector3();
+    vector.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5);
+    vector.unproject(camera);
+    var dir = vector.sub(camera.position).normalize();
+    var distance = -camera.position.z / dir.z;
+    var pos = camera.position.clone().add(dir.multiplyScalar(distance));
+    return pos;
+  }
+
+  function makeHeart(pos, scale) {
+    if (heartMaterial === null) {
+      return null;
+    }
+    var heart = new t3.Sprite(heartMaterial);
+    if (pos !== undefined) {
+      heart.position.set(pos[0], pos[1], pos[2]);
+    }
+    if (scale !== undefined) {
+      heart.scale.set(scale[0], scale[1], scale[2]);
+    }
+    hearts.push(heart);
+    scene.add(heart);
+
+    return heart;
+  }
+
+  function makeSkull(pos, scale) {
+    if (skullMaterial === null) {
+      return null;
+    }
+    var skull = new t3.Sprite(skullMaterial);
+    if (pos !== undefined) {
+      skull.position.set(pos[0], pos[1], pos[2]);
+    }
+    if (scale !== undefined) {
+      skull.scale.set(scale[0], scale[1], scale[2]);
+    }
+    skulls.push(skull);
+    scene.add(skull);
+    return skull;
+  }
+
+  loader.load("img/skull.png", function(image) {
+    image.minFilter = t3.NearestFilter;
+    image.magFilter = t3.NearestFilter;
+    skullMaterial = new t3.SpriteMaterial( { map: image, color: 0xffffff, fog: true } );
+  });
+
+  loader.load("img/heart.png", function(image) {
+    image.minFilter = t3.NearestFilter;
+    image.magFilter = t3.NearestFilter;
+    heartMaterial = new t3.SpriteMaterial( { map: image, color: 0xffffff, fog: true } );
+  });
 
   function initScene() {
-    _.each([skull, heart], function(sprite) {
+    if (skullMaterial == null || heartMaterial == null) {
+      return false;
+    } else if (bigheart !== null) {
+      return true;
+    }
+
+    // create the main heart
+    bigheart = makeHeart();
+    hearts.pop();
+    bigheart.position.set(0, 0, 0);
+    bigheart.scale.set(2,2,1);
+
+    camera.position.z = 5;
+    bigheart._basescale = new t3.Vector3(2, 2, 1);
+    bigheart._gamelooper = 0.0;
+    bigheart._energy = 1.0;
+
+    return true;
+  }
+
+  function update() {
+    if (!initScene()) {
+      return;
+    }
+
+    var dt = 0.02;
+    var rnd = Math.random();
+    updateSkulls(dt, rnd);
+    updateHearts(dt, rnd);
+    updateBigHeart(dt);
+  }
+
+  var skullSpawnRate = 5;
+  var heartSpawnRate = 2;
+
+
+  function heartRadius(heart) {
+    return Math.max(heart._basescale.x * heart._energy * 0.4, 0.25);
+  }
+
+  function updateSkulls(dt, rnd) {
+    if (rnd > 1.0 - (skullSpawnRate * 0.01)) {
       var x = Math.random() - 0.5;
-	    var y = Math.random() - 0.5;
-	    var z = Math.random() - 0.5;
-      var radius = 10.0;
+      var y = Math.random() - 0.5;
+      var skull = makeSkull([x, y, 0], [0.25, 0.25, 1]);
+      skull.position.normalize();
+      skull.position.multiplyScalar(50);
+    }
 
-      sprite.position.set( x, y, z );
-		  sprite.position.normalize();
-		  sprite.position.multiplyScalar( radius );
+    for (var i = 0; i < skulls.length; ++i) {
+      if (!updateSkull(dt, skulls[i])) {
+        removals.push(i);
+      }
+    }
 
-    });
+    for (var i = 0; i < removals.length; ++i) {
+      var si = removals[i];
+      scene.remove(skulls[si]);
+      skulls[si] = null;
+    }
+    removals = [];
+    skulls = _.reject(skulls, function(s) { return s === null; });
   }
 
-  function updateSpawns() {
+  function updateSkull(dt, skull) {
+    if (skull.position.length() < heartRadius(bigheart)) {
+      bigheart._energy -= skull.scale.x * 0.1;
+      return false;
+    } else {
+      var dir = skull.position.clone();
+      dir.negate();
+      dir.multiplyScalar(dt * 0.8);
+      skull.position.add(dir);
+    }
+    return true;
   }
 
-  var cameralooper = 0.0;
-  camera.position.z = 5;
+  function updateHearts(dt, rnd) {
+    if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
+      var x = Math.random() - 0.5;
+      var y = Math.random() - 0.5;
+      var heart = makeHeart([x, y, 0], [0.333, 0.333, 1]);
+      heart.position.multiplyScalar(Math.random() * 10 + 5);
+    }
 
-  // player heart
-  // other hearts
-  // enemy skulls
-  // spawnHeart() - once in a while, spawn new hearts
-  // spawnSkull() - once in a while, spawn new skulls
-  // hearts and skulls need a lifetime..
-  // updateHearts()
-  // updateSkulls()
-  // updatePlayer()
+    for (var i = 0; i < hearts.length; ++i) {
+      if (!updateHeart(dt, hearts[i])) {
+        removals.push(i);
+      }
+    }
 
-  function updatePlayer() {
-    cameralooper += 0.05;
-    camera.position.z = 10.0 + Math.sin(cameralooper) * 5.0;
+    for (var i = 0; i < removals.length; ++i) {
+      var si = removals[i];
+      scene.remove(hearts[si]);
+      hearts[si] = null;
+    }
+    removals = [];
+    hearts = _.reject(hearts, function(s) { return s === null; });
+  }
+
+  function updateHeart(dt, heart) {
+    if (heart.position.length() < heartRadius(bigheart)) {
+      bigheart._energy += heart.scale.x * 0.1;
+      return false;
+    } else {
+      var dir = heart.position.clone();
+      dir.negate();
+      dir.multiplyScalar(dt * 0.2);
+      heart.position.add(dir);
+    }
+    return true;
+  }
+
+  function updateBigHeart(dt) {
+    // shrink / grow heart with number of collisions
+
+    var energy = bigheart._energy;
+    if (energy > 0) {
+      bigheart._gamelooper += dt * 5.5;
+      var sv = Math.sin(bigheart._gamelooper) * 0.07;
+      bigheart.scale.set(bigheart._basescale.x * energy + sv, bigheart._basescale.y * energy + sv, 1);
+      bigheart.visible = true;
+    } else {
+      bigheart.visible = false;
+    }
   }
 
   function render() {
     requestAnimationFrame(render);
-    updateSpawns();
-    updatePlayer();
+    update();
     renderer.render(scene, camera);
   }
   initScene();
