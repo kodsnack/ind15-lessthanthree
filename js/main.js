@@ -1,3 +1,5 @@
+'use strict';
+
 // sprites:
 // img/ind15-sprites.png
 // 33 x 14 px
@@ -5,6 +7,7 @@
 // skull: (17, 0) w: 16, h: 14
 
 (function(t3) {
+  'use strict';
 
   // setup WebAudio
   var AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -21,7 +24,6 @@
       };
   })();
 
-
   var scene = new t3.Scene();
   var camera = new t3.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
   var renderer = new t3.WebGLRenderer();
@@ -31,10 +33,30 @@
   renderer.setPixelRatio( window.devicePixelRatio );
   document.body.appendChild( renderer.domElement );
 
+  var helpText = 'Balance the bad comments, tap or press space to release hearts!';
+
+  var helpDiv = document.createElement('div');
+  helpDiv.id = 'helpText';
+  helpDiv.className = 'helpText';
+  helpDiv.textContent = helpText;
+  helpDiv.addEventListener('touchend', restart);
+  helpDiv.addEventListener('click', restart);
+  document.body.appendChild(helpDiv);
+
   window.addEventListener('resize', function () {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+  });
+  window.addEventListener('keypress', function (event) {
+    if (event.keyCode === 32) {
+      addHeart();
+      playFX(600 + Math.random()*30);
+    }
+  });
+  window.addEventListener('touchend', function (event) {
+    addHeart();
+    playFX(600 + Math.random()*30);
   });
 
   renderer.setClearColor(0);
@@ -79,6 +101,17 @@
   var hearts = [];
   var skulls = [];
   var removals = [];
+  var running = true;
+
+  function restart() {
+    document.getElementById('helpText').textContent = helpText;
+    bigheart.sprite.scale.set(2,2,1);
+    bigheart._basescale = new t3.Vector3(2, 2, 1);
+    bigheart._gamelooper = 0.0;
+    bigheart._energy = 1.0;
+    bigheart.sprite.visible = true;
+    running = true;
+  }
 
   // x and y are client position in window
   function pos2Dto3D(x, y) {
@@ -89,6 +122,13 @@
     var distance = -camera.position.z / dir.z;
     var pos = camera.position.clone().add(dir.multiplyScalar(distance));
     return pos;
+  }
+
+  function addHeart() {
+      var x = Math.random() - 0.5;
+      var y = Math.random() - 0.5;
+      var heart = new Heart([x, y, 0], [0.333, 0.333, 1]);
+      heart.sprite.position.multiplyScalar(Math.random() * 10 + 5);
   }
 
   function Heart(pos, scale) {
@@ -139,7 +179,7 @@
   var tickCount = 0;
 
   function initScene() {
-    if (skullMaterial == null || heartMaterial == null) {
+    if (skullMaterial === null || heartMaterial === null) {
       return false;
     } else if (bigheart !== null) {
       return true;
@@ -163,7 +203,7 @@
 
   function update() {
     if (!initScene()) {
-      return;
+      return false;
     }
 
     tickCount += 1;
@@ -193,9 +233,14 @@
 
     var dt = 0.02;
     var rnd = Math.random();
-    updateSkulls(dt, rnd);
-    updateHearts(dt, rnd);
-    updateBigHeart(dt);
+    if (running) {
+      updateSkulls(dt, rnd);
+      updateHearts(dt, rnd);
+      running = updateBigHeart(dt);
+      return true;
+    } else {
+      return false;
+    }
   }
 
   var skullSpawnRate = 5;
@@ -246,12 +291,9 @@
   }
 
   function updateHearts(dt, rnd) {
-    if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
-      var x = Math.random() - 0.5;
-      var y = Math.random() - 0.5;
-      var heart = new Heart([x, y, 0], [0.333, 0.333, 1]);
-      heart.sprite.position.multiplyScalar(Math.random() * 10 + 5);
-    }
+    /*if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
+      addHeart();
+    }*/
 
     for (var i = 0; i < hearts.length; ++i) {
       if (!updateHeart(dt, hearts[i])) {
@@ -278,7 +320,7 @@
     } else {
       var dir = heart.sprite.position.clone();
       dir.negate();
-      dir.multiplyScalar(dt * 0.2);
+      dir.multiplyScalar(dt * 0.8);
       heart.sprite.position.add(dir);
     }
     return true;
@@ -288,14 +330,17 @@
     // shrink / grow heart with number of collisions
 
     var energy = bigheart._energy;
-    if (energy > 0) {
+    if (energy > 0 && energy < 1.5) {
       bigheart._gamelooper += dt * 5.5;
       var sv = Math.sin(bigheart._gamelooper) * 0.07;
       bigheart.sprite.scale.set(bigheart._basescale.x * energy + sv, bigheart._basescale.y * energy + sv, 1);
       bigheart.sprite.visible = true;
     } else {
       bigheart.sprite.visible = false;
+      document.getElementById('helpText').textContent = 'Restart';
+      return false;
     }
+    return true;
   }
 
   function render() {
