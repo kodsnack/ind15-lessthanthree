@@ -34,7 +34,9 @@
   var faceMaterial = [null, null, null];
   var bigheart = null;
   var hearts = [];
+  var heartfreelist = [];
   var skulls = [];
+  var skullfreelist = [];
   var removals = [];
   var gamestate = { running: true, restarter: -1 };
   var helpText = 'Balance the bad comments, tap or press space to release hearts!';
@@ -71,6 +73,10 @@
   renderer.setClearColor(0);
   scene.fog = new t3.Fog( 0, 15, 30 );
 
+  var real = new Float32Array([0,0.4,0.4,1,1,1,0.3,0.7,0.6,0.5,0.9,0.8]);
+  var imag = new Float32Array(real.length);
+  var hornTable = audio.createPeriodicWave(real, imag);
+
   function playFX(freq) {
     var peakGain = 0.5;
     var rampUp = 0.1;
@@ -78,10 +84,6 @@
 
     var source = audio.createOscillator();
     source.frequency.value = freq;
-
-    var real = new Float32Array([0,0.4,0.4,1,1,1,0.3,0.7,0.6,0.5,0.9,0.8]);
-    var imag = new Float32Array(real.length);
-    var hornTable = audio.createPeriodicWave(real, imag);
 
     source.setPeriodicWave(hornTable);
 
@@ -119,7 +121,19 @@
     if (gamestate.running) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
-      var heart = new Heart([x, y, 0], [0.333, 0.333, 1]);
+      var heart = null;
+      if (heartfreelist.length > 0) {
+        heart = heartfreelist.pop();
+        heart.face = null;
+        heart.live = true;
+        heart.outrotime = 0;
+        heart.sprite.position.set(x, y, 0);
+        heart.sprite.scale.set(0.333, 0.333, 1);
+        hearts.push(heart);
+        scene.add(heart.sprite);
+      } else {
+        heart = new Heart([x, y, 0], [0.333, 0.333, 1]);
+      }
       heart.sprite.position.multiplyScalar(Math.random() * 10 + 5);
     }
   }
@@ -279,22 +293,27 @@
 
     tickCount += 1;
     if (tickCount == 10) {
+      var logo = document.body.querySelector("#defend-the-internet-logo");
+      if (!logo) {
       var text2 = document.createElement('div');
-      text2.id = "defend-the-internet-logo";
-      text2.style.position = 'absolute';
-      text2.style.zIndex = 1;    // if you still don't see the label, try uncommenting this
-      text2.style.width = "100%";
-      text2.style.display = "block";
-      text2.style.fontFamily = "sans-serif, sans, Helvetica";
-      text2.style.fontWeight = "bold";
-      text2.style.fontSize = "80px";
-      text2.style.backgroundColor = "white";
-      text2.style.color = "black";
-      text2.style.textAlign = "center";
-      text2.innerHTML = "DEFEND THE INTERNET!";
-      text2.style.top = ((window.innerHeight / 2) - 100) + 'px';
-      text2.style.left = 0;
-      document.body.appendChild(text2);
+        text2.id = "defend-the-internet-logo";
+        text2.style.position = 'absolute';
+        text2.style.zIndex = 1;    // if you still don't see the label, try uncommenting this
+        text2.style.width = "100%";
+        text2.style.display = "block";
+        text2.style.fontFamily = "sans-serif, sans, Helvetica";
+        text2.style.fontWeight = "bold";
+        text2.style.fontSize = "80px";
+        text2.style.backgroundColor = "white";
+        text2.style.color = "black";
+        text2.style.textAlign = "center";
+        text2.innerHTML = "DEFEND THE INTERNET!";
+        text2.style.top = ((window.innerHeight / 2) - 100) + 'px';
+        text2.style.left = 0;
+        document.body.appendChild(text2);
+      } else {
+        logo.className = '';
+      }
     }
 
     if (tickCount >= 80) {
@@ -326,11 +345,25 @@
     return Math.max(heart._basescale.x * heart._energy * 0.4, 0.25);
   }
 
+  var skullPlayedInFrame = false;
+
   function updateSkulls(dt, rnd) {
+    skullPlayedInFrame = false;
     if (gamestate.running && (rnd > 1.0 - (skullSpawnRate * 0.01))) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
-      var skull = new Skull([x, y, 0.1], [0.25, 0.25, 1]);
+      var skull = null;
+      if (skullfreelist.length > 0) {
+        skull = skullfreelist.pop();
+        skull.live = true;
+        skull.outrotime = 0;
+        skull.sprite.position.set(x, y, 0.1);
+        skull.sprite.scale.set(0.25, 0.25, 1);
+        skulls.push(skull);
+        scene.add(skull.sprite);
+      } else {
+        skull = new Skull([x, y, 0.1], [0.25, 0.25, 1]);
+      }
       skull.sprite.position.normalize();
       skull.sprite.position.multiplyScalar(50);
     }
@@ -341,13 +374,9 @@
       }
     });
 
-    if (removals.length > 0) {
-      playFX(150 + Math.random()*150);
-      screenShake(rnd * 0.5);
-    }
-
     removals.forEach(function (removal) {
       scene.remove(skulls[removal].sprite);
+      skullfreelist.push(skulls[removal]);
       skulls[removal] = null;
     });
     removals = [];
@@ -365,6 +394,11 @@
       }
     } else if (skull.sprite.position.length() < heartRadius(bigheart)) {
       skull.live = false;
+      if (!skullPlayedInFrame) {
+        skullPlayedInFrame = true;
+        playFX(150 + Math.random()*150);
+        screenShake(Math.random() * 0.5);
+      }
       if (gamestate.running) {
         bigheart._energy -= skull.sprite.scale.x * 0.1;
       }
@@ -377,10 +411,13 @@
     return true;
   }
 
+  var heartPlayedInFrame = false;
+
   function updateHearts(dt, rnd) {
     /*if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
       addHeart();
-    }*/
+      }*/
+    heartPlayedInFrame = false;
 
     for (var i = 0; i < hearts.length; ++i) {
       if (!updateHeart(dt, hearts[i])) {
@@ -388,13 +425,10 @@
       }
     }
 
-    if (removals.length > 0) {
-      playFX(350 + Math.random()*150);
-      screenShake(rnd * 0.25);
-    }
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
       scene.remove(hearts[si].sprite);
+      heartfreelist.push(hearts[si]);
       hearts[si] = null;
     }
     removals = [];
@@ -412,6 +446,11 @@
       }
     } else if (heart.sprite.position.length() < heartRadius(bigheart)) {
       heart.live = false;
+      if (!heartPlayedInFrame) {
+        heartPlayedInFrame = true;
+        playFX(350 + Math.random()*150);
+        screenShake(Math.random() * 0.25);
+      }
       if (gamestate.running) {
         bigheart._energy += heart.sprite.scale.x * 0.1;
       }
