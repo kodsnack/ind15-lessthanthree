@@ -201,7 +201,8 @@
   function initScene() {
     if (skullMaterial === null || heartMaterial === null) {
       return false;
-    } else if (bigheart !== null) {
+    }
+    if (bigheart !== null) {
       return true;
     }
 
@@ -283,21 +284,21 @@
       skull.sprite.position.multiplyScalar(50);
     }
 
-    for (var i = 0; i < skulls.length; ++i) {
-      if (!updateSkull(dt, skulls[i])) {
-        removals.push(i);
+    skulls.forEach(function (skull, index) {
+      if (!updateSkull(dt, skulls[index])) {
+        removals.push(index);
       }
-    }
+    });
 
     if (removals.length > 0) {
       playFX(150 + Math.random()*150);
       screenShake(rnd * 0.5);
     }
-    for (var i = 0; i < removals.length; ++i) {
-      var si = removals[i];
-      scene.remove(skulls[si].sprite);
-      skulls[si] = null;
-    }
+
+    removals.forEach(function (removal) {
+      scene.remove(skulls[removal].sprite);
+      skulls[removal] = null;
+    });
     removals = [];
     skulls = _.reject(skulls, function(s) { return s === null; });
   }
