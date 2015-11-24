@@ -1,3 +1,5 @@
+'use strict';
+
 // sprites:
 // img/ind15-sprites.png
 // 33 x 14 px
@@ -5,6 +7,7 @@
 // skull: (17, 0) w: 16, h: 14
 
 (function(t3) {
+  'use strict';
   var scene = new t3.Scene();
   var camera = new t3.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
   var renderer = new t3.WebGLRenderer();
@@ -21,11 +24,11 @@
   });
   window.addEventListener('keypress', function (event) {
     if (event.keyCode === 32) {
-      var x = Math.random() - 0.5;
-      var y = Math.random() - 0.5;
-      var heart = makeHeart([x, y, 0], [0.333, 0.333, 1]);
-      heart.position.multiplyScalar(Math.random() * 10 + 5);
+      addHeart();
     }
+  });
+  window.addEventListener('touchend', function (event) {
+    addHeart();
   });
 
   renderer.setClearColor(0);
@@ -48,6 +51,13 @@
     var distance = -camera.position.z / dir.z;
     var pos = camera.position.clone().add(dir.multiplyScalar(distance));
     return pos;
+  }
+
+  function addHeart() {
+      var x = Math.random() - 0.5;
+      var y = Math.random() - 0.5;
+      var heart = makeHeart([x, y, 0], [0.333, 0.333, 1]);
+      heart.position.multiplyScalar(Math.random() * 10 + 5);
   }
 
   function makeHeart(pos, scale) {
@@ -96,7 +106,7 @@
   });
 
   function initScene() {
-    if (skullMaterial == null || heartMaterial == null) {
+    if (skullMaterial === null || heartMaterial === null) {
       return false;
     } else if (bigheart !== null) {
       return true;
@@ -175,12 +185,9 @@
   }
 
   function updateHearts(dt, rnd) {
-    if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
-      var x = Math.random() - 0.5;
-      var y = Math.random() - 0.5;
-      var heart = makeHeart([x, y, 0], [0.333, 0.333, 1]);
-      heart.position.multiplyScalar(Math.random() * 10 + 5);
-    }
+    /*if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
+      addHeart();
+    }*/
 
     for (var i = 0; i < hearts.length; ++i) {
       if (!updateHeart(dt, hearts[i])) {
