@@ -278,7 +278,6 @@
       text2.id = "defend-the-internet-logo";
       text2.style.position = 'absolute';
       text2.style.zIndex = 1;    // if you still don't see the label, try uncommenting this
-      text2.style.height = "100px";
       text2.style.width = "100%";
       text2.style.display = "block";
       text2.style.fontFamily = "sans-serif, sans, Helvetica";
