@@ -228,7 +228,8 @@
     }
 
     if (tickCount >= 80) {
-      document.body.querySelector("#defend-the-internet-logo").style.display = "none";
+      var logo = document.body.querySelector("#defend-the-internet-logo");
+      logo.className += logo.className ? ' hidden' : 'hidden';
     }
 
     var dt = 0.02;
