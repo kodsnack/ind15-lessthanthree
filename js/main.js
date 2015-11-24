@@ -28,6 +28,7 @@
   var camera = new t3.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
   var renderer = new t3.WebGLRenderer();
   var loader = new t3.TextureLoader();
+  var shakeVector = new t3.Vector3(0, 0, 0);
 
   renderer.setSize( window.innerWidth, window.innerHeight );
   renderer.setPixelRatio( window.devicePixelRatio );
@@ -142,6 +143,8 @@
     if (scale !== undefined) {
       this.sprite.scale.set(scale[0], scale[1], scale[2]);
     }
+    this.live = true;
+    this.outrotime = 0;
     hearts.push(this);
     scene.add(this.sprite);
 
@@ -159,6 +162,8 @@
     if (scale !== undefined) {
       this.sprite.scale.set(scale[0], scale[1], scale[2]);
     }
+    this.live = true;
+    this.outrotime = 0;
     skulls.push(this);
     scene.add(this.sprite);
     return this;
@@ -175,6 +180,21 @@
     image.magFilter = t3.NearestFilter;
     heartMaterial = new t3.SpriteMaterial( { map: image, color: 0xffffff, fog: true } );
   });
+
+  function screenShake(amount) {
+    var shakeOffset = new t3.Vector3(Math.random() * amount, Math.random() * amount, Math.random() * amount);
+    shakeVector.add(shakeOffset);
+  }
+
+  function updateScreenShake(dt) {
+    var basePosition = new t3.Vector3(0, 0, 5);
+    basePosition.add(shakeVector);
+    console.log(basePosition);
+    camera.position.copy(basePosition);
+    shakeVector.set(Math.random() * shakeVector.x,
+                    Math.random() * shakeVector.y,
+                    Math.random() * shakeVector.z);
+  }
 
   var tickCount = 0;
 
@@ -229,7 +249,9 @@
 
     if (tickCount >= 80) {
       var logo = document.body.querySelector("#defend-the-internet-logo");
-      logo.className += logo.className ? ' hidden' : 'hidden';
+      if (logo.className != 'hidden') {
+        logo.className = 'hidden';
+      }
     }
 
     var dt = 0.02;
@@ -237,6 +259,7 @@
     if (running) {
       updateSkulls(dt, rnd);
       updateHearts(dt, rnd);
+      updateScreenShake(dt);
       running = updateBigHeart(dt);
       return true;
     } else {
@@ -255,7 +278,7 @@
     if (rnd > 1.0 - (skullSpawnRate * 0.01)) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
-      var skull = new Skull([x, y, 0], [0.25, 0.25, 1]);
+      var skull = new Skull([x, y, 0.1], [0.25, 0.25, 1]);
       skull.sprite.position.normalize();
       skull.sprite.position.multiplyScalar(50);
     }
@@ -268,6 +291,7 @@
 
     if (removals.length > 0) {
       playFX(150 + Math.random()*150);
+      screenShake(rnd * 0.5);
     }
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
@@ -279,9 +303,17 @@
   }
 
   function updateSkull(dt, skull) {
-    if (skull.sprite.position.length() < heartRadius(bigheart)) {
+    if (skull.live == false) {
+      skull.outrotime += dt * 2;
+      skull.sprite.scale.x -= dt * 2;
+      skull.sprite.scale.y -= dt * 2;
+      //skull.sprite.position.z -= dt * 500;
+      if (skull.outrotime > 1.0) {
+        return false;
+      }
+    } else if (skull.sprite.position.length() < heartRadius(bigheart)) {
+      skull.live = false;
       bigheart._energy -= skull.sprite.scale.x * 0.1;
-      return false;
     } else {
       var dir = skull.sprite.position.clone();
       dir.negate();
@@ -304,6 +336,7 @@
 
     if (removals.length > 0) {
       playFX(350 + Math.random()*150);
+      screenShake(rnd * 0.25);
     }
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
@@ -315,9 +348,17 @@
   }
 
   function updateHeart(dt, heart) {
-    if (heart.sprite.position.length() < heartRadius(bigheart)) {
+    if (heart.live == false) {
+      heart.outrotime += dt * 2;
+      heart.sprite.scale.x -= dt * 2;
+      heart.sprite.scale.y -= dt * 2;
+      heart.sprite.rotation.z += dt * 360;
+      if (heart.outrotime > 1.0) {
+        return false;
+      }
+    } else if (heart.sprite.position.length() < heartRadius(bigheart)) {
+      heart.live = false;
       bigheart._energy += heart.sprite.scale.x * 0.1;
-      return false;
     } else {
       var dir = heart.sprite.position.clone();
       dir.negate();
