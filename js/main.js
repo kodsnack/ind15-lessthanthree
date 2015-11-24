@@ -43,37 +43,37 @@
     return pos;
   }
 
-  function makeHeart(pos, scale) {
+  function Heart(pos, scale) {
     if (heartMaterial === null) {
       return null;
     }
-    var heart = new t3.Sprite(heartMaterial);
+    this.sprite = new t3.Sprite(heartMaterial);
     if (pos !== undefined) {
-      heart.position.set(pos[0], pos[1], pos[2]);
+      this.sprite.position.set(pos[0], pos[1], pos[2]);
     }
     if (scale !== undefined) {
-      heart.scale.set(scale[0], scale[1], scale[2]);
+      this.sprite.scale.set(scale[0], scale[1], scale[2]);
     }
-    hearts.push(heart);
-    scene.add(heart);
+    hearts.push(this);
+    scene.add(this.sprite);
 
-    return heart;
+    return this;
   }
 
-  function makeSkull(pos, scale) {
+  function Skull(pos, scale) {
     if (skullMaterial === null) {
       return null;
     }
-    var skull = new t3.Sprite(skullMaterial);
+    this.sprite = new t3.Sprite(skullMaterial);
     if (pos !== undefined) {
-      skull.position.set(pos[0], pos[1], pos[2]);
+      this.sprite.position.set(pos[0], pos[1], pos[2]);
     }
     if (scale !== undefined) {
-      skull.scale.set(scale[0], scale[1], scale[2]);
+      this.sprite.scale.set(scale[0], scale[1], scale[2]);
     }
-    skulls.push(skull);
-    scene.add(skull);
-    return skull;
+    skulls.push(this);
+    scene.add(this.sprite);
+    return this;
   }
 
   loader.load("img/skull.png", function(image) {
@@ -96,10 +96,10 @@
     }
 
     // create the main heart
-    bigheart = makeHeart();
+    bigheart = new Heart();
     hearts.pop();
-    bigheart.position.set(0, 0, 0);
-    bigheart.scale.set(2,2,1);
+    bigheart.sprite.position.set(0, 0, 0);
+    bigheart.sprite.scale.set(2,2,1);
 
     camera.position.z = 5;
     bigheart._basescale = new t3.Vector3(2, 2, 1);
@@ -132,9 +132,9 @@
     if (rnd > 1.0 - (skullSpawnRate * 0.01)) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
-      var skull = makeSkull([x, y, 0], [0.25, 0.25, 1]);
-      skull.position.normalize();
-      skull.position.multiplyScalar(50);
+      var skull = new Skull([x, y, 0], [0.25, 0.25, 1]);
+      skull.sprite.position.normalize();
+      skull.sprite.position.multiplyScalar(50);
     }
 
     for (var i = 0; i < skulls.length; ++i) {
@@ -145,7 +145,7 @@
 
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
-      scene.remove(skulls[si]);
+      scene.remove(skulls[si].sprite);
       skulls[si] = null;
     }
     removals = [];
@@ -153,14 +153,14 @@
   }
 
   function updateSkull(dt, skull) {
-    if (skull.position.length() < heartRadius(bigheart)) {
-      bigheart._energy -= skull.scale.x * 0.1;
+    if (skull.sprite.position.length() < heartRadius(bigheart)) {
+      bigheart._energy -= skull.sprite.scale.x * 0.1;
       return false;
     } else {
-      var dir = skull.position.clone();
+      var dir = skull.sprite.position.clone();
       dir.negate();
       dir.multiplyScalar(dt * 0.8);
-      skull.position.add(dir);
+      skull.sprite.position.add(dir);
     }
     return true;
   }
@@ -169,8 +169,8 @@
     if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
-      var heart = makeHeart([x, y, 0], [0.333, 0.333, 1]);
-      heart.position.multiplyScalar(Math.random() * 10 + 5);
+      var heart = new Heart([x, y, 0], [0.333, 0.333, 1]);
+      heart.sprite.position.multiplyScalar(Math.random() * 10 + 5);
     }
 
     for (var i = 0; i < hearts.length; ++i) {
@@ -181,7 +181,7 @@
 
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
-      scene.remove(hearts[si]);
+      scene.remove(hearts[si].sprite);
       hearts[si] = null;
     }
     removals = [];
@@ -189,14 +189,14 @@
   }
 
   function updateHeart(dt, heart) {
-    if (heart.position.length() < heartRadius(bigheart)) {
-      bigheart._energy += heart.scale.x * 0.1;
+    if (heart.sprite.position.length() < heartRadius(bigheart)) {
+      bigheart._energy += heart.sprite.scale.x * 0.1;
       return false;
     } else {
-      var dir = heart.position.clone();
+      var dir = heart.sprite.position.clone();
       dir.negate();
       dir.multiplyScalar(dt * 0.2);
-      heart.position.add(dir);
+      heart.sprite.position.add(dir);
     }
     return true;
   }
@@ -208,10 +208,10 @@
     if (energy > 0) {
       bigheart._gamelooper += dt * 5.5;
       var sv = Math.sin(bigheart._gamelooper) * 0.07;
-      bigheart.scale.set(bigheart._basescale.x * energy + sv, bigheart._basescale.y * energy + sv, 1);
-      bigheart.visible = true;
+      bigheart.sprite.scale.set(bigheart._basescale.x * energy + sv, bigheart._basescale.y * energy + sv, 1);
+      bigheart.sprite.visible = true;
     } else {
-      bigheart.visible = false;
+      bigheart.sprite.visible = false;
     }
   }
 
