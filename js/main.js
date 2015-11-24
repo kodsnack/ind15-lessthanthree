@@ -61,10 +61,12 @@
   });
   window.addEventListener('keypress', function (event) {
     if (event.keyCode === 32) {
+      event.stopPropagation();
       doPlayerAction();
     }
   });
   window.addEventListener('touchend', function (event) {
+    event.stopPropagation();
     doPlayerAction();
   });
 
