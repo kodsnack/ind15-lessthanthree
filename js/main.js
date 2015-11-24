@@ -20,8 +20,11 @@
   var helpText = 'Balance the bad comments, tap or press space to release hearts!';
 
   var helpDiv = document.createElement('div');
+  helpDiv.id = 'helpText';
   helpDiv.className = 'helpText';
   helpDiv.textContent = helpText;
+  helpDiv.addEventListener('touchend', restart);
+  helpDiv.addEventListener('click', restart);
   document.body.appendChild(helpDiv);
 
   window.addEventListener('resize', function () {
@@ -48,6 +51,16 @@
   var skulls = [];
   var removals = [];
   var running = true;
+
+  function restart() {
+    document.getElementById('helpText').textContent = helpText;
+    bigheart.scale.set(2,2,1);
+    bigheart._basescale = new t3.Vector3(2, 2, 1);
+    bigheart._gamelooper = 0.0;
+    bigheart._energy = 1.0;
+    bigheart.visible = true;
+    running = true;
+  }
 
   // x and y are client position in window
   function pos2Dto3D(x, y) {
@@ -135,7 +148,7 @@
 
   function update() {
     if (!initScene()) {
-      return;
+      return false;
     }
 
     var dt = 0.02;
@@ -144,6 +157,9 @@
       updateSkulls(dt, rnd);
       updateHearts(dt, rnd);
       running = updateBigHeart(dt);
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -235,6 +251,7 @@
       bigheart.visible = true;
     } else {
       bigheart.visible = false;
+      document.getElementById('helpText').textContent = 'Restart';
       return false;
     }
     return true;
