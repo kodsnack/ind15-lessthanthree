@@ -281,7 +281,7 @@
       text2.style.height = "100px";
       text2.style.width = "100%";
       text2.style.display = "block";
-      text2.style.fontFamily = "sans";
+      text2.style.fontFamily = "sans-serif, sans, Helvetica";
       text2.style.fontWeight = "bold";
       text2.style.fontSize = "80px";
       text2.style.backgroundColor = "white";
