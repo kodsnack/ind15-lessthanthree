@@ -6,6 +6,21 @@
 
 (function(t3) {
 
+  // setup WebAudio
+  var AudioContext = window.AudioContext || window.webkitAudioContext;
+  var audio = new AudioContext();
+
+  window.requestAnimFrame = (function(){
+    return window.requestAnimationFrame  ||
+      window.webkitRequestAnimationFrame ||
+      window.mozRequestAnimationFrame    ||
+      window.oRequestAnimationFrame      ||
+      window.msRequestAnimationFrame     ||
+      function( callback ){
+        window.setTimeout(callback, 1000 / 60);
+      };
+  })();
+
 
   var scene = new t3.Scene();
   var camera = new t3.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -24,6 +39,39 @@
 
   renderer.setClearColor(0);
   scene.fog = new t3.Fog( 0, 15, 30 );
+
+  function playFX(freq) {
+    var peakGain = 0.5;
+    var rampUp = 0.1;
+    var rampDown = 0.3;
+
+    var source = audio.createOscillator();
+    source.frequency.value = freq;
+
+    var real = new Float32Array([0,0.4,0.4,1,1,1,0.3,0.7,0.6,0.5,0.9,0.8]);
+    var imag = new Float32Array(real.length);
+    var hornTable = audio.createPeriodicWave(real, imag);
+
+    source.setPeriodicWave(hornTable);
+
+    var gain = audio.createGain();
+    source.connect(gain);
+    gain.connect(audio.destination);
+
+    var now = audio.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(peakGain, now + rampUp);
+    gain.gain.exponentialRampToValueAtTime(0.1, now + rampDown);
+
+    //source.connect(audio.destination);
+    source.start(0);
+
+    setTimeout(function() {
+      source.stop(0);
+      source.disconnect();
+    }, (rampUp + rampDown) * 1000);
+  }
 
   var skullMaterial = null;
   var heartMaterial = null;
@@ -143,6 +191,9 @@
       }
     }
 
+    if (removals.length > 0) {
+      playFX(150 + Math.random()*150);
+    }
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
       scene.remove(skulls[si].sprite);
@@ -179,6 +230,9 @@
       }
     }
 
+    if (removals.length > 0) {
+      playFX(350 + Math.random()*150);
+    }
     for (var i = 0; i < removals.length; ++i) {
       var si = removals[i];
       scene.remove(hearts[si].sprite);
@@ -216,7 +270,7 @@
   }
 
   function render() {
-    requestAnimationFrame(render);
+    window.requestAnimFrame(render);
     update();
     renderer.render(scene, camera);
   }
