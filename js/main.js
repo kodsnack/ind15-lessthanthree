@@ -50,8 +50,8 @@
   helpDiv.id = 'helpText';
   helpDiv.className = 'helpText';
   helpDiv.textContent = helpText;
-  helpDiv.addEventListener('touchend', restart);
-  helpDiv.addEventListener('click', restart);
+  helpDiv.addEventListener('touchend', clickOrRestart);
+  helpDiv.addEventListener('click', clickOrRestart);
   document.body.appendChild(helpDiv);
 
   window.addEventListener('resize', function () {
@@ -61,13 +61,11 @@
   });
   window.addEventListener('keypress', function (event) {
     if (event.keyCode === 32) {
-      addHeart();
-      playFX(600 + Math.random()*30);
+      doPlayerAction();
     }
   });
   window.addEventListener('touchend', function (event) {
-    addHeart();
-    playFX(600 + Math.random()*30);
+    doPlayerAction();
   });
 
   renderer.setClearColor(0);
@@ -151,6 +149,8 @@
     }
     this.live = true;
     this.outrotime = 0;
+    this.face = null;
+    this.faces = [null, null, null];
     hearts.push(this);
     scene.add(this.sprite);
 
@@ -158,38 +158,53 @@
   }
 
   function setFace(heart, facenr) {
-    var addFace = false;
-    if ("face" in heart || facenr < 0) {
-      if (heart.face && heart.face.index != facenr) {
-        scene.remove(heart.face.sprite);
-        heart.face.sprite.visible = false;
-        heart.face.index = -1;
-        heart.face = null;
-        if (facenr >= 0) {
-          addFace = true;
-        }
-      } else if (heart.face == null && facenr >= 0) {
-        addFace = true;
+    if (heart.face && (heart.face.index != facenr || facenr < 0)) {
+      scene.remove(heart.face.sprite);
+      heart.face.sprite.visible = false;
+      heart.face.index = -1;
+      heart.face = null;
+    }
+
+    if (!heart.face && facenr >= 0) {
+      if (heart.faces[facenr]) {
+        heart.face = heart.faces[facenr];
+        heart.face.index = facenr;
+        heart.face.sprite.visible = true;
+      } else if (faceMaterial[facenr]) {
+        heart.face = {
+          sprite: null,
+          index: facenr
+        };
+        heart.face.sprite = new t3.Sprite(faceMaterial[facenr]);
+        heart.faces[facenr] = heart.face;
       }
-    } else {
-      addFace = true;
+      if (heart.face) {
+        scene.add(heart.face.sprite);
+      }
     }
-    if (addFace && faceMaterial[facenr]) {
-      heart.face = {
-        sprite: null,
-        index: facenr
-      };
-      heart.face.sprite = new t3.Sprite(faceMaterial[facenr]);
-      scene.add(heart.face.sprite);
-    }
-    if ("face" in heart && heart.face) {
+
+    if (heart.face) {
       heart.face.sprite.position.copy(heart.sprite.position);
       heart.face.sprite.position.z += 0.05;
       heart.face.sprite.scale.copy(heart.sprite.scale);
     }
   }
 
-  function restart() {
+  function clickOrRestart(e) {
+    if (gamestate.running) {
+      doPlayerAction();
+      return false;
+    } else {
+      return restart(e);
+    }
+  }
+
+  function doPlayerAction() {
+    addHeart();
+    playFX(600 + Math.random()*30);
+  }
+
+  function restart(e) {
     document.getElementById('helpText').textContent = helpText;
     bigheart.sprite.scale.set(2,2,1);
     bigheart._basescale = new t3.Vector3(2, 2, 1);
@@ -198,7 +213,6 @@
     bigheart.sprite.visible = true;
     bigheart.live = true;
     bigheart.outrotime = 0;
-    bigheart.face = null;
     setFace(bigheart, 0);
     gamestate.running = true;
     if (gamestate.restarter > -1) {
@@ -206,6 +220,7 @@
       gamestate.restarter = -1;
     }
     tickCount = 0;
+    return false;
   }
 
   function Skull(pos, scale) {
