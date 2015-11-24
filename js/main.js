@@ -29,14 +29,22 @@
   var renderer = new t3.WebGLRenderer();
   var loader = new t3.TextureLoader();
   var shakeVector = new t3.Vector3(0, 0, 0);
+  var skullMaterial = null;
+  var heartMaterial = null;
+  var faceMaterial = [null, null, null];
+  var bigheart = null;
+  var hearts = [];
+  var skulls = [];
+  var removals = [];
+  var gamestate = { running: true };
+  var helpText = 'Balance the bad comments, tap or press space to release hearts!';
+  var helpDiv = document.createElement('div')
+  var tickCount = 0;
 
   renderer.setSize( window.innerWidth, window.innerHeight );
   renderer.setPixelRatio( window.devicePixelRatio );
   document.body.appendChild( renderer.domElement );
 
-  var helpText = 'Balance the bad comments, tap or press space to release hearts!';
-
-  var helpDiv = document.createElement('div');
   helpDiv.id = 'helpText';
   helpDiv.className = 'helpText';
   helpDiv.textContent = helpText;
@@ -96,27 +104,9 @@
     }, (rampUp + rampDown) * 1000);
   }
 
-  var skullMaterial = null;
-  var heartMaterial = null;
-  var bigheart = null;
-  var hearts = [];
-  var skulls = [];
-  var removals = [];
-  var running = true;
-
-  function restart() {
-    document.getElementById('helpText').textContent = helpText;
-    bigheart.sprite.scale.set(2,2,1);
-    bigheart._basescale = new t3.Vector3(2, 2, 1);
-    bigheart._gamelooper = 0.0;
-    bigheart._energy = 1.0;
-    bigheart.sprite.visible = true;
-    running = true;
-  }
-
   // x and y are client position in window
   function pos2Dto3D(x, y) {
-    var vector = new THREE.Vector3();
+    var vector = new t3.Vector3();
     vector.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5);
     vector.unproject(camera);
     var dir = vector.sub(camera.position).normalize();
@@ -126,10 +116,12 @@
   }
 
   function addHeart() {
+    if (gamestate.running) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
       var heart = new Heart([x, y, 0], [0.333, 0.333, 1]);
       heart.sprite.position.multiplyScalar(Math.random() * 10 + 5);
+    }
   }
 
   function Heart(pos, scale) {
@@ -149,6 +141,52 @@
     scene.add(this.sprite);
 
     return this;
+  }
+
+  function setFace(heart, facenr) {
+    var addFace = false;
+    if ("face" in heart || facenr < 0) {
+      if (heart.face && heart.face.index != facenr) {
+        scene.remove(heart.face.sprite);
+        heart.face.sprite.visible = false;
+        heart.face.index = -1;
+        heart.face = null;
+        if (facenr >= 0) {
+          addFace = true;
+        }
+      } else if (heart.face == null && facenr >= 0) {
+        addFace = true;
+      }
+    } else {
+      addFace = true;
+    }
+    if (addFace && faceMaterial[facenr]) {
+      heart.face = {
+        sprite: null,
+        index: facenr
+      };
+      heart.face.sprite = new t3.Sprite(faceMaterial[facenr]);
+      scene.add(heart.face.sprite);
+    }
+    if ("face" in heart && heart.face) {
+      heart.face.sprite.position.copy(heart.sprite.position);
+      heart.face.sprite.position.z += 0.05;
+      heart.face.sprite.scale.copy(heart.sprite.scale);
+    }
+  }
+
+  function restart() {
+    document.getElementById('helpText').textContent = helpText;
+    bigheart.sprite.scale.set(2,2,1);
+    bigheart._basescale = new t3.Vector3(2, 2, 1);
+    bigheart._gamelooper = 0.0;
+    bigheart._energy = 1.0;
+    bigheart.sprite.visible = true;
+    bigheart.live = true;
+    bigheart.outrotime = 0;
+    bigheart.face = null;
+    setFace(bigheart, 0);
+    gamestate.running = true;
   }
 
   function Skull(pos, scale) {
@@ -181,22 +219,29 @@
     heartMaterial = new t3.SpriteMaterial( { map: image, color: 0xffffff, fog: true } );
   });
 
+  _.each([0, 1, 2], function(idx) {
+    loader.load("img/face" + (idx + 1) + ".png", function(image) {
+      image.minFilter = t3.NearestFilter;
+      image.magFilter = t3.NearestFilter;
+      faceMaterial[idx] = new t3.SpriteMaterial( { map: image, color: 0xffffff, fog: true } );
+    });
+  });
+
   function screenShake(amount) {
-    var shakeOffset = new t3.Vector3(Math.random() * amount, Math.random() * amount, Math.random() * amount);
-    shakeVector.add(shakeOffset);
+    if (gamestate.running) {
+      var shakeOffset = new t3.Vector3(Math.random() * amount, Math.random() * amount, Math.random() * amount);
+      shakeVector.add(shakeOffset);
+    }
   }
 
   function updateScreenShake(dt) {
     var basePosition = new t3.Vector3(0, 0, 5);
     basePosition.add(shakeVector);
-    console.log(basePosition);
     camera.position.copy(basePosition);
     shakeVector.set(Math.random() * shakeVector.x,
                     Math.random() * shakeVector.y,
                     Math.random() * shakeVector.z);
   }
-
-  var tickCount = 0;
 
   function initScene() {
     if (skullMaterial === null || heartMaterial === null) {
@@ -257,15 +302,11 @@
 
     var dt = 0.02;
     var rnd = Math.random();
-    if (running) {
-      updateSkulls(dt, rnd);
-      updateHearts(dt, rnd);
-      updateScreenShake(dt);
-      running = updateBigHeart(dt);
-      return true;
-    } else {
-      return false;
-    }
+    updateSkulls(dt, rnd);
+    updateHearts(dt, rnd);
+    updateScreenShake(dt);
+    updateBigHeart(dt);
+    return true;
   }
 
   var skullSpawnRate = 5;
@@ -276,7 +317,7 @@
   }
 
   function updateSkulls(dt, rnd) {
-    if (rnd > 1.0 - (skullSpawnRate * 0.01)) {
+    if (gamestate.running && (rnd > 1.0 - (skullSpawnRate * 0.01))) {
       var x = Math.random() - 0.5;
       var y = Math.random() - 0.5;
       var skull = new Skull([x, y, 0.1], [0.25, 0.25, 1]);
@@ -314,7 +355,9 @@
       }
     } else if (skull.sprite.position.length() < heartRadius(bigheart)) {
       skull.live = false;
-      bigheart._energy -= skull.sprite.scale.x * 0.1;
+      if (gamestate.running) {
+        bigheart._energy -= skull.sprite.scale.x * 0.1;
+      }
     } else {
       var dir = skull.sprite.position.clone();
       dir.negate();
@@ -359,7 +402,9 @@
       }
     } else if (heart.sprite.position.length() < heartRadius(bigheart)) {
       heart.live = false;
-      bigheart._energy += heart.sprite.scale.x * 0.1;
+      if (gamestate.running) {
+        bigheart._energy += heart.sprite.scale.x * 0.1;
+      }
     } else {
       var dir = heart.sprite.position.clone();
       dir.negate();
@@ -372,16 +417,40 @@
   function updateBigHeart(dt) {
     // shrink / grow heart with number of collisions
 
+    if (bigheart.live == false) {
+      if (bigheart.outrotime < 1.0) {
+        gamestate.running = false;
+        bigheart.sprite.visible = false;
+        bigheart.outrotime += dt * 2;
+        return true;
+      } else if (bigheart.outrotime > 1.0) {
+        return false;
+      }
+    }
+
     var energy = bigheart._energy;
     if (energy > 0 && energy < 1.5) {
+
+      if (energy > 1.4) {
+        setFace(bigheart, 2);
+      } else if (energy > 1.25) {
+        setFace(bigheart, 1);
+      } else if (energy > 0.5) {
+        setFace(bigheart, 0);
+      } else if (energy > 0.25) {
+        setFace(bigheart, 1);
+      } else {
+        setFace(bigheart, 2);
+      }
+
       bigheart._gamelooper += dt * 5.5;
       var sv = Math.sin(bigheart._gamelooper) * 0.07;
       bigheart.sprite.scale.set(bigheart._basescale.x * energy + sv, bigheart._basescale.y * energy + sv, 1);
-      bigheart.sprite.visible = true;
     } else {
-      bigheart.sprite.visible = false;
+      bigheart.live = false;
+      bigheart.outrotime = 0;
+      setFace(bigheart, -1);
       document.getElementById('helpText').textContent = 'Restart';
-      return false;
     }
     return true;
   }
