@@ -17,6 +17,13 @@
   renderer.setPixelRatio( window.devicePixelRatio );
   document.body.appendChild( renderer.domElement );
 
+  var helpText = 'Balance the bad comments, tap or press space to release hearts!';
+
+  var helpDiv = document.createElement('div');
+  helpDiv.className = 'helpText';
+  helpDiv.textContent = helpText;
+  document.body.appendChild(helpDiv);
+
   window.addEventListener('resize', function () {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
