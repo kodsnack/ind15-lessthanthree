@@ -5,8 +5,6 @@
 // skull: (17, 0) w: 16, h: 14
 
 (function(t3) {
-
-
   var scene = new t3.Scene();
   var camera = new t3.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
   var renderer = new t3.WebGLRenderer();
@@ -21,6 +19,14 @@
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   });
+  window.addEventListener('keypress', function (event) {
+    if (event.keyCode === 32) {
+      var x = Math.random() - 0.5;
+      var y = Math.random() - 0.5;
+      var heart = makeHeart([x, y, 0], [0.333, 0.333, 1]);
+      heart.position.multiplyScalar(Math.random() * 10 + 5);
+    }
+  });
 
   renderer.setClearColor(0);
   scene.fog = new t3.Fog( 0, 15, 30 );
@@ -31,6 +37,7 @@
   var hearts = [];
   var skulls = [];
   var removals = [];
+  var running = true;
 
   // x and y are client position in window
   function pos2Dto3D(x, y) {
@@ -116,9 +123,11 @@
 
     var dt = 0.02;
     var rnd = Math.random();
-    updateSkulls(dt, rnd);
-    updateHearts(dt, rnd);
-    updateBigHeart(dt);
+    if (running) {
+      updateSkulls(dt, rnd);
+      updateHearts(dt, rnd);
+      running = updateBigHeart(dt);
+    }
   }
 
   var skullSpawnRate = 5;
@@ -195,7 +204,7 @@
     } else {
       var dir = heart.position.clone();
       dir.negate();
-      dir.multiplyScalar(dt * 0.2);
+      dir.multiplyScalar(dt * 0.8);
       heart.position.add(dir);
     }
     return true;
@@ -205,14 +214,16 @@
     // shrink / grow heart with number of collisions
 
     var energy = bigheart._energy;
-    if (energy > 0) {
+    if (energy > 0 && energy < 1.5) {
       bigheart._gamelooper += dt * 5.5;
       var sv = Math.sin(bigheart._gamelooper) * 0.07;
       bigheart.scale.set(bigheart._basescale.x * energy + sv, bigheart._basescale.y * energy + sv, 1);
       bigheart.visible = true;
     } else {
       bigheart.visible = false;
+      return false;
     }
+    return true;
   }
 
   function render() {
