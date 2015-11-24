@@ -136,6 +136,8 @@
     heartMaterial = new t3.SpriteMaterial( { map: image, color: 0xffffff, fog: true } );
   });
 
+  var tickCount = 0;
+
   function initScene() {
     if (skullMaterial == null || heartMaterial == null) {
       return false;
@@ -154,12 +156,39 @@
     bigheart._gamelooper = 0.0;
     bigheart._energy = 1.0;
 
+    tickCount = 0;
+
     return true;
   }
 
   function update() {
     if (!initScene()) {
       return;
+    }
+
+    tickCount += 1;
+    if (tickCount == 10) {
+      var text2 = document.createElement('div');
+      text2.id = "defend-the-internet-logo";
+      text2.style.position = 'absolute';
+      text2.style.zIndex = 1;    // if you still don't see the label, try uncommenting this
+      text2.style.height = "100px";
+      text2.style.width = "100%";
+      text2.style.display = "block";
+      text2.style.fontFamily = "sans";
+      text2.style.fontWeight = "bold";
+      text2.style.fontSize = "80px";
+      text2.style.backgroundColor = "white";
+      text2.style.color = "black";
+      text2.style.textAlign = "center";
+      text2.innerHTML = "DEFEND THE INTERNET!";
+      text2.style.top = ((window.innerHeight / 2) - 100) + 'px';
+      text2.style.left = 0;
+      document.body.appendChild(text2);
+    }
+
+    if (tickCount >= 80) {
+      document.body.querySelector("#defend-the-internet-logo").style.display = "none";
     }
 
     var dt = 0.02;
