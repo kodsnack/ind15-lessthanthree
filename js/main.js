@@ -36,7 +36,7 @@
   var hearts = [];
   var skulls = [];
   var removals = [];
-  var gamestate = { running: true };
+  var gamestate = { running: true, restarter: -1 };
   var helpText = 'Balance the bad comments, tap or press space to release hearts!';
   var helpDiv = document.createElement('div')
   var tickCount = 0;
@@ -187,6 +187,11 @@
     bigheart.face = null;
     setFace(bigheart, 0);
     gamestate.running = true;
+    if (gamestate.restarter > -1) {
+      clearTimeout(gamestate.restarter);
+      gamestate.restarter = -1;
+    }
+    tickCount = 0;
   }
 
   function Skull(pos, scale) {
@@ -294,8 +299,14 @@
 
     if (tickCount >= 80) {
       var logo = document.body.querySelector("#defend-the-internet-logo");
-      if (logo.className != 'hidden') {
+      if (logo && logo.className != 'hidden') {
         logo.className = 'hidden';
+      }
+    }
+    if (tickCount >= 120) {
+      var logo = document.body.querySelector("#defend-the-internet-logo");
+      if (logo) {
+        logo.parentNode.removeChild(logo);
       }
     }
 
@@ -421,6 +432,11 @@
         gamestate.running = false;
         bigheart.sprite.visible = false;
         bigheart.outrotime += dt * 2;
+        gamestate.restarter = setTimeout(function() {
+          if (gamestate.running == false) {
+            restart();
+          }
+        }, 5 * 1000);
         return true;
       } else if (bigheart.outrotime > 1.0) {
         return false;
