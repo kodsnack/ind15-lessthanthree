@@ -40,7 +40,7 @@
   var removals = [];
   var gamestate = { running: true, restarter: -1 };
   var helpText = 'Balance the bad comments, tap or press space to release hearts!';
-  var helpDiv = document.createElement('div')
+  var helpDiv = document.createElement('div');
   var tickCount = 0;
 
   renderer.setSize( window.innerWidth, window.innerHeight );
@@ -307,10 +307,10 @@
     if (!initScene()) {
       return false;
     }
-
+    var logo;
     tickCount += 1;
     if (tickCount == 10) {
-      var logo = document.body.querySelector("#defend-the-internet-logo");
+      logo = document.body.querySelector("#defend-the-internet-logo");
       if (!logo) {
       var text2 = document.createElement('div');
         text2.id = "defend-the-internet-logo";
@@ -334,13 +334,13 @@
     }
 
     if (tickCount >= 80) {
-      var logo = document.body.querySelector("#defend-the-internet-logo");
+      logo = document.body.querySelector("#defend-the-internet-logo");
       if (logo && logo.className != 'hidden') {
         logo.className = 'hidden';
       }
     }
     if (tickCount >= 120) {
-      var logo = document.body.querySelector("#defend-the-internet-logo");
+      logo = document.body.querySelector("#defend-the-internet-logo");
       if (logo) {
         logo.parentNode.removeChild(logo);
       }
@@ -431,9 +431,6 @@
   var heartPlayedInFrame = false;
 
   function updateHearts(dt, rnd) {
-    /*if (rnd > 1.0 - (heartSpawnRate * 0.01)) {
-      addHeart();
-      }*/
     heartPlayedInFrame = false;
 
     for (var i = 0; i < hearts.length; ++i) {
